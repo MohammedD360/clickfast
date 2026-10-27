@@ -2,6 +2,13 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 
+const REQUIRED_ENV = ['DB_HOST', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_DB'];
+const missing = REQUIRED_ENV.filter(name => !process.env[name]);
+if (missing.length > 0) {
+  console.error(`Variable(s) d'environnement manquante(s) : ${missing.join(', ')}. Copier .env.example vers .env et le remplir.`);
+  process.exit(1);
+}
+
 const pool = new Pool({
   host: process.env.DB_HOST,
   port: Number(process.env.DB_PORT) || 5432,
