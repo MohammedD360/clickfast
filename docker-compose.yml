@@ -1,0 +1,71 @@
+services:
+  clickfast-db:
+    image: postgres:17.2-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - clickfast-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  api:
+    build: ./api
+    image: clickfast-api
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      API_PORT: ${API_PORT}
+    ports:
+      - "${API_PORT}:${API_PORT}"
+    networks:
+      - clickfast-net
+    depends_on:
+      clickfast-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  game:
+    build: .
+    image: clickfast
+    environment:
+      API_URL: ${API_URL}
+    ports:
+      - "${GAME_PORT}:8080"
+    networks:
+      - clickfast-net
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  adminer:
+    image: adminer:4.8.1
+    environment:
+      ADMINER_DEFAULT_SERVER: ${DB_HOST}
+    ports:
+      - "${ADMINER_PORT}:8080"
+    networks:
+      - clickfast-net
+    depends_on:
+      clickfast-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+    name: clickfast-pgdata
+
+networks:
+  clickfast-net:
+    name: clickfast-net
